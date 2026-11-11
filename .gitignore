@@ -5,3 +5,8 @@ main
 *.o
 *.obj
 *input.txt
+.DS_Store
+*.dSYM
+coach/data/cache/
+*.tmp
+__pycache__/

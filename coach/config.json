@@ -1,0 +1,78 @@
+{
+  "handle": "yechancho",
+  "level": 900,
+  "bands": {
+    "speed": [
+      -100,
+      0
+    ],
+    "frontier": [
+      100,
+      300
+    ],
+    "stretch": [
+      400,
+      400
+    ]
+  },
+  "limits": {
+    "speed": {
+      "checkin": 15,
+      "stop": 20
+    },
+    "frontier": {
+      "checkin": 45,
+      "stop": 60,
+      "cap": 90
+    },
+    "stretch": {
+      "checkin": 60,
+      "stop": 90
+    },
+    "transfer": {
+      "checkin": 45,
+      "stop": 60,
+      "cap": 90
+    },
+    "park": {
+      "checkin": 20,
+      "stop": 30
+    },
+    "reconstruct": {
+      "checkin": 20,
+      "stop": 30
+    },
+    "upsolve": {
+      "checkin": 30,
+      "stop": 45
+    },
+    "remedial": {
+      "checkin": 30,
+      "stop": 45
+    },
+    "contest": {
+      "checkin": 0,
+      "stop": 0
+    }
+  },
+  "stuck_window": 20,
+  "plan": {
+    "postmortem_buffer": 5,
+    "queue_share": 0.4,
+    "stretch_every_days": 7,
+    "stretch_min_session": 150
+  },
+  "pick": {
+    "min_contest_id": 1000,
+    "interactive_min_level": 1400,
+    "min_rating": 800
+  },
+  "review_intervals": [
+    1,
+    3,
+    7,
+    16,
+    35
+  ],
+  "upsolve_lookback_days": 14
+}
