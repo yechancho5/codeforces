@@ -55,7 +55,8 @@ python3 scripts/coach.py report --days 7         # weekly numbers
 python3 scripts/coach.py pick --slot frontier --n 3 [--tags "dp"]   # unseen problems
 python3 scripts/coach.py contests                # upcoming rounds
 python3 scripts/coach.py guard 1850B             # refuses (exit 2) if the contest is still live
-python3 scripts/coach.py swap N | add ID | ack ID | set level R --reason ".."
+python3 scripts/coach.py add ID [--slot S] [--at N] | swap N | drop N   # adjust today's plan (add validates)
+python3 scripts/coach.py ack ID | set level R --reason ".."
 scripts/run.sh practice/900/1807D_odd_queries.cpp   # compile with sanitizers, run against input.txt
 ```
 

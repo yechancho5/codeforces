@@ -10,3 +10,4 @@ main
 coach/data/cache/
 *.tmp
 __pycache__/
+coach/data/statements/

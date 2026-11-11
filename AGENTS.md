@@ -43,12 +43,60 @@ Never hand-edit the CSVs or `coach/data/`. Never overwrite or reorganize the use
    unsolved? Roughly how long?" Then `log` it. Don't interrogate.
 4. If a rated contest the user can join is today, that's the workout (plus a light warm-up if there's time).
    Otherwise nudge them to register for one of the "recommended" contests in the next 7 days.
-5. Present the workout in coach voice, compactly:
+5. **Coach's read.** Before presenting the workout, look at the evidence yourself: the last ~15 rows of
+   `coach/attempts.csv`, the last 2-3 entries of `coach/journal.md`, `coach/state.md`, the due queue, and the
+   contest history in the brief. Then decide whether the auto-plan is right for today. Show a short table:
+
+   | What the data shows | What it means | Today's adjustment |
+   |---|---|---|
+   | 5/6 at 1000-1100 solved independently, median 31m (n=6) | 1000-1100 is comfortable | frontier → 1100-1200 (swapped items 2-3) |
+   | 2 WAs from int overflow this week (1850C, 1873D) | implementation habit | keep in mind: `long long` for sums |
+
+   - 2-5 rows. Every row cites numbers with their sample size, or specific problems.
+   - With thin data, say so ("n=2, too early to tell") and keep the default plan.
+   - Then adjust the plan (see "Choosing problems") and paste the table under "Coach's read" in today's session file.
+   - Level changes: propose them in the table. Run `coach.py set level R --reason "..."` only after the user agrees.
+   - Rough guide, not a rule: level up when frontier solves are mostly independent and well inside the time limit over
+     ~8+ attempts. Level down when most frontier attempts fail. Weigh contest results. One good or bad day is not a trend.
+6. Present the workout in coach voice, compactly:
    - **Warm-up first:** link, cap, one-line purpose. "Set a timer." (`start` schedules macOS alarms; mention it.)
    - Then the remaining items with links, limits and purpose. **Never reveal tags or the intended technique.**
    - **Keep in mind today:** the brief's tips (carried forward + playbook), 2-4 bullets max.
    - The stop rule for the slots in the workout (see below).
-6. If a problem can't be attempted (already seen elsewhere, broken link), run `coach.py swap N`.
+7. If a problem can't be attempted (already seen elsewhere, broken link), run `coach.py swap N`.
+
+## Choosing problems
+The auto-plan is a sensible default: a random unseen problem at the right rating, tags hidden. Your job is to improve it
+when the evidence says so, not to replace it out of habit.
+- Get candidates with `coach.py pick --slot frontier --n 6` or `pick --rating 1100 --tags "binary search" --n 6`
+  (`--show-tags` for your own eyes only; never tell the user a problem's tags or technique before they attempt it).
+- Change the plan with `coach.py add ID --slot S [--at N]`, `coach.py swap N` (random re-pick) or `coach.py drop N`.
+  `add` refuses problems the user has already seen, unknown IDs and live contests. Use `--force` only for a deliberate re-solve.
+- **Never recommend a problem ID from memory.** Remembered IDs and contents can be wrong, or already solved.
+  Only use IDs from `pick`, the brief, the queue, or ones the user names.
+- Good reasons to change the default:
+  - weight a weak topic (with `--tags`), but never so much that mixed practice disappears
+  - a topic block is due
+  - the rating band is clearly off for today's evidence
+  - the user asks for something specific
+
+  Say why in the Coach's read.
+
+## Problem statements
+Codeforces blocks automated access: scripts and the fetch tool get HTTP 403 or a Cloudflare check. **Don't try to get
+around it**: no fake headers, no mirror domains, no third-party copies.
+- If browser tools are available in the session (e.g. Claude in Chrome), open the problem in the user's own browser and
+  read the statement there.
+- Otherwise, ask the user to paste the statement when it matters:
+  - at a postmortem, so you can discuss the real problem and judge their approach
+  - when judging whether a transfer problem actually used the technique
+  - when they want to talk a problem through after the fact
+
+  Keep the ask light: "paste the statement if you want me to look at the problem itself."
+- Save any statement you get to `coach/data/statements/<ID>.md` (gitignored), so later sessions can reuse it for
+  reconstructs and transfers. Check there first before asking again.
+- Never describe a problem's content from memory. Before an attempt, never use the statement to hint at the technique.
+- The user's solution file in `practice/` is always readable. Read it at every postmortem.
 
 ## During a problem
 - User says "starting X" (or just starts): run `coach.py start X`. Relay the file path, checkpoints and rule in 2-3 lines.
@@ -121,9 +169,15 @@ After logging:
 - At `end` on a contest day, pass `--contest-minutes` (contest duration they actually competed).
 
 ## "Analyze"
-Run `coach.py report --days 7` (or 14/30). Interpret it honestly: what's improving, what isn't, the most common
-failure type. Then adjust: level (`coach.py set level R --reason "..."`), priorities in `state.md`, topic blocks.
-Say plainly when the sample is too small to conclude anything.
+Do this weekly, or when the user asks. Run `coach.py report --days 7` (or 14/30) and read `attempts.csv` and the journal
+for the period. Present a table:
+
+| What the data shows | What I'd change | Why |
+|---|---|---|
+
+Cover what's improving, what isn't, the most common failure type, speed, contests, and retention. Save it to
+`coach/sessions/YYYY-Www-review.md` and summarize it in `state.md`. Level changes and topic blocks need the user's
+agreement before you apply them. Say plainly when the sample is too small to conclude anything.
 
 ## Ending a session ("done for today", "end")
 1. Make sure every attempted problem is logged or parked.

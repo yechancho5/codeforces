@@ -493,7 +493,9 @@ def render_session_md():
         d = date.fromisoformat(s["date"])
         tips = "\n".join(f"- {t}" for t in s.get("keep_in_mind", [])) or "- (nothing carried forward yet)"
         text = (f"# Training: {s['date']} ({d.strftime('%a')}) · {s['minutes']} min planned · level {s['level']}\n\n"
-                f"## Keep in mind today\n{tips}\n\n## Workout\n{block}\n\n"
+                f"## Keep in mind today\n{tips}\n\n"
+                "## Coach's read\n_(what the data shows → today's adjustments; written by the coach)_\n\n"
+                f"## Workout\n{block}\n\n"
                 "## Notes\n_(coach notes during the session; the day summary goes in coach/journal.md)_\n")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
@@ -990,18 +992,68 @@ def cmd_ack(a):
     print(f"Acknowledged {len(a.problems)} problem(s); they won't show as unlogged.")
 
 
+RESOLVE_SLOTS = {"reconstruct", "park", "upsolve"}  # slots where a seen problem is expected
+
+
+def problem_issues(pid, slot):
+    """Reasons a problem shouldn't go into today's plan (empty list = fine)."""
+    issues = []
+    m = CF_PID.match(pid)
+    if m:
+        known = {p["pid"]: p for p in problemset()}
+        if pid not in known and not any(x["pid"] == pid for x in submissions()):
+            issues.append(f"{pid} is not in the cached Codeforces problemset (wrong ID?)")
+        finished = finished_contest_ids()
+        if finished is not None and int(m.group(1)) not in finished and int(m.group(1)) < 100000:
+            issues.append(f"contest {m.group(1)} is not finished (live or upcoming)")
+    if slot not in RESOLVE_SLOTS:
+        pids, names = seen_sets()
+        name = problem_info(pid).get("name")
+        if any(x["pid"] == pid for x in submissions()):
+            issues.append(f"{pid} already has your submissions on Codeforces")
+        elif any(x["problem"] == pid for x in attempts()):
+            issues.append(f"{pid} is already logged in attempts.csv")
+        elif pid in pids:
+            issues.append(f"{pid} is already in today's plan or the review queue")
+        elif name and name in names:
+            issues.append(f"'{name}' matches a problem you've already seen (Div1/Div2 copy)")
+    return issues
+
+
 def cmd_add(a):
     cfg, pid = config(), norm_pid(a.problem)
     s = session()
     if not s or s["date"] != iso(today()):
         sys.exit("No session today. Run brief first.")
+    issues = problem_issues(pid, a.slot)
+    if issues and not a.force:
+        sys.exit("Not added: " + "; ".join(issues) + ". Use --force only if this is intentional.")
     info = problem_info(pid)
     if a.name:
         info = dict(info, name=a.name)
-    s["items"].append(make_item(a.slot, info, a.limit or cfg["limits"].get(a.slot, cfg["limits"]["frontier"])["stop"]))
+    item = make_item(a.slot, info, a.limit or cfg["limits"].get(a.slot, cfg["limits"]["frontier"])["stop"])
+    pos = len(s["items"]) if a.at is None else max(0, min(len(s["items"]), a.at - 1))
+    s["items"].insert(pos, item)
     save_session(s)
     render_session_md()
-    print(format_item(len(s["items"]), s["items"][-1]))
+    print(format_item(pos + 1, item))
+
+
+def cmd_drop(a):
+    s = session()
+    if not s or not 1 <= a.n <= len(s["items"]):
+        sys.exit("No such workout item.")
+    it = s["items"][a.n - 1]
+    if it.get("status", "todo") != "todo":
+        sys.exit("Only untouched items can be dropped.")
+    if it.get("rid"):
+        rows = reviews()
+        upsert_review(rows, it["rid"], target="")  # review stays due; it just loses this problem
+        save_reviews(rows)
+    s["items"].pop(a.n - 1)
+    save_session(s)
+    render_session_md()
+    print(f"Dropped item {a.n}: {it.get('problem') or it.get('note')} ({it['slot']}).")
 
 
 def cmd_swap(a):
@@ -1294,7 +1346,13 @@ def main(argv=None):
     x.add_argument("--slot", default="frontier", choices=list(DEFAULT_CONFIG["limits"]))
     x.add_argument("--limit", type=int)
     x.add_argument("--name")
+    x.add_argument("--at", type=int, help="position in the workout (1 = first)")
+    x.add_argument("--force", action="store_true", help="add even if already seen / not found")
     x.set_defaults(fn=cmd_add)
+
+    x = sub.add_parser("drop", help="remove untouched workout item N")
+    x.add_argument("n", type=int)
+    x.set_defaults(fn=cmd_drop)
 
     x = sub.add_parser("swap", help="replace workout item N with another unseen problem")
     x.add_argument("n", type=int)

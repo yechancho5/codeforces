@@ -256,6 +256,23 @@ class SessionFlowTests(Base):
         self.assertEqual((row["minutes"], row["parked"], row["result"]), ("80", "1", "after_park"))
         self.assertEqual(next(r for r in coach.reviews() if r["rid"] == f"pk-{pid}")["status"], "done")
 
+    def test_add_validates_and_drop_removes(self):
+        self.run_cli("brief", "--minutes", "120", "--no-sync")
+        n = len(coach.session()["items"])
+        for bad in ("1903A", "9999Z"):  # submitted on CF / not in problemset
+            with self.assertRaises(SystemExit):
+                self.run_cli("add", bad)
+        self.run_cli("add", "1903A", "--slot", "reconstruct")  # seen is expected for a re-solve
+        planned = {i["problem"] for i in coach.session()["items"]}
+        fresh = next(p["pid"] for p in coach.problemset() if p["pid"] not in planned and p["pid"] != "1903A")
+        self.run_cli("add", fresh, "--at", "1")
+        items = coach.session()["items"]
+        self.assertEqual((len(items), items[0]["problem"]), (n + 2, fresh))
+        with self.assertRaises(SystemExit):
+            self.run_cli("add", fresh)  # already in today's plan
+        self.run_cli("drop", "1")
+        self.assertNotIn(fresh, [i["problem"] for i in coach.session()["items"]])
+
     def test_unlogged_activity_and_ack(self):
         self.assertTrue(any("1903A" in line for line in coach.unlogged()))
         self.run_cli("ack", "1903A")
